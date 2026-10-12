@@ -32,6 +32,16 @@
 		ranges;
 		stdout-path = "serial1:115200n8";
 	};
+
+	bat: battery {
+		compatible = "simple-battery";
+		charge-full-design-microamp-hours = <5000000>;
+		charge-term-current-microamp = <130000>;
+		constant-charge-voltage-max-microvolt = <4400000>;
+		voltage-min-design-microvolt = <3500000>;
+		voltage-max-design-microvolt = <4370000>;
+		factory-internal-resistance-micro-ohms = <268000>;
+	};
 };
 
 /* eMMC (internal storage / rootfs) */
