@@ -34,12 +34,16 @@ jobs:
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
           grep -E 'CONFIG_(ARCH_SPRD|SERIAL_SPRD|MMC_SDHCI_SPRD|MFD_SC27XX_PMIC|REGULATOR_SC2730|SC23XX_SIPC|BT_SPRDSIPC)=' .config || true
 
-      - name: Build Image + KG5n dtb
+      - name: Build KG5n dtbs
+        run: |
+          cd linux
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" sprd/ums9230-kg5n.dtb
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" sprd/ums9230-reeder-s19mps.dtb
+
+      - name: Build Image
         run: |
           cd linux
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" Image
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- arch/arm64/boot/dts/sprd/ums9230-kg5n.dtb
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- arch/arm64/boot/dts/sprd/ums9230-reeder-s19mps.dtb
 
       - name: Stage artifacts
         run: |
