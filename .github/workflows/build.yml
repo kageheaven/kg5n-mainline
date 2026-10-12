@@ -35,10 +35,12 @@ jobs:
           scripts/kconfig/merge_config.sh .config "$GITHUB_WORKSPACE/config/kg5n-fragment.config"
           make olddefconfig
           grep -E 'CONFIG_(ARCH_SPRD|SERIAL_SPRD|MMC_SDHCI_SPRD|MFD_SC27XX_PMIC|REGULATOR_SC2730|SC23XX_SIPC|BT_SPRDSIPC|SPRD_WCN_REMOTEPROC)=' .config
-          grep -q '^CONFIG_ARCH_SPRD=y' .config
-          grep -q '^CONFIG_SERIAL_SPRD=y' .config
-          grep -q '^CONFIG_MMC_SDHCI_SPRD=y' .config
-          grep -q '^CONFIG_MFD_SC27XX_PMIC=y' .config
+          for s in ARCH_SPRD SERIAL_SPRD MMC_SDHCI_SPRD MFD_SC27XX_PMIC \
+                   REGULATOR_SC2730 SC27XX_ADC FUEL_GAUGE_SC27XX SPRD_WCN_REMOTEPROC \
+                   CFG80211 MAC80211 SC23XX_SIPC BT_SPRDSIPC DRM_SPRD SND_SOC_SPRD \
+                   TYPEC_SC27XX_PD USB_MUSB_SPRD; do
+            grep -q "^CONFIG_$s=y" .config || { echo "NOT BUILT-IN: CONFIG_$s"; grep "^CONFIG_$s=" .config; exit 1; }
+          done
           echo "config OK"
 
       - name: Build KG5n dtbs
