@@ -29,10 +29,17 @@ jobs:
       - name: Configure
         run: |
           cd linux
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          make defconfig
           scripts/kconfig/merge_config.sh .config "$GITHUB_WORKSPACE/config/kg5n-fragment.config"
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
-          grep -E 'CONFIG_(ARCH_SPRD|SERIAL_SPRD|MMC_SDHCI_SPRD|MFD_SC27XX_PMIC|REGULATOR_SC2730|SC23XX_SIPC|BT_SPRDSIPC)=' .config || true
+          make olddefconfig
+          grep -E 'CONFIG_(ARCH_SPRD|SERIAL_SPRD|MMC_SDHCI_SPRD|MFD_SC27XX_PMIC|REGULATOR_SC2730|SC23XX_SIPC|BT_SPRDSIPC|SPRD_WCN_REMOTEPROC)=' .config
+          grep -q '^CONFIG_ARCH_SPRD=y' .config
+          grep -q '^CONFIG_SERIAL_SPRD=y' .config
+          grep -q '^CONFIG_MMC_SDHCI_SPRD=y' .config
+          grep -q '^CONFIG_MFD_SC27XX_PMIC=y' .config
+          echo "config OK"
 
       - name: Build KG5n dtbs
         run: |
