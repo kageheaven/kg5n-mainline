@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * TECNO Spark 8C (KG5n) - Unisoc UMS9230 (Tiger T606) - U-Boot board
+ *
+ * Minimal headless board: UART console, eMMC (sdio3, rootfs), USB.
+ * Derived from ums9230-reeder-s19mps.dts (same UMS9230 reference family);
+ * the reeder uses UFS as internal storage, KG5n uses eMMC.
+ */
+
+/dts-v1/;
+
+#include "ums9230.dtsi"
+#include "sc2730.dtsi"
+
+/ {
+	model = "TECNO Spark 8C (KG5n)";
+	compatible = "tecno,kg5n", "sprd,ums9230";
+
+	aliases {
+		serial0 = &uart0;
+		serial1 = &uart1;
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x1 0xfffff000>;
+	};
+
+	chosen {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		stdout-path = "serial1:115200n8";
+	};
+};
+
+/* eMMC (internal storage / rootfs) */
+&sdio3 {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&usb {
+	status = "okay";
+};

@@ -1,0 +1,100 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu bc bison flex libssl-dev libncurses-dev \
+            device-tree-compiler cpio rsync xz-utils
+
+      - name: Clone kernel (ums9230-mainline/linux)
+        run: git clone --depth 1 -b ums9230 https://codeberg.org/ums9230-mainline/linux.git linux
+
+      - name: Apply KG5n device tree
+        run: |
+          cp linux-dts/ums9230-kg5n.dts linux/arch/arm64/boot/dts/sprd/ums9230-kg5n.dts
+          echo 'dtb-$(CONFIG_ARCH_SPRD) += ums9230-kg5n.dtb' >> linux/arch/arm64/boot/dts/sprd/Makefile
+
+      - name: Configure
+        run: |
+          cd linux
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+          scripts/kconfig/merge_config.sh .config "$GITHUB_WORKSPACE/config/kg5n-fragment.config"
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+          grep -E 'CONFIG_(ARCH_SPRD|SERIAL_SPRD|MMC_SDHCI_SPRD|MFD_SC27XX_PMIC|REGULATOR_SC2730|SC23XX_SIPC|BT_SPRDSIPC)=' .config || true
+
+      - name: Build Image + dtbs
+        run: |
+          cd linux
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" Image dtbs
+
+      - name: Stage artifacts
+        run: |
+          mkdir -p out
+          cp linux/arch/arm64/boot/Image out/Image
+          cp linux/arch/arm64/boot/dts/sprd/ums9230-*.dtb out/
+          cp linux/.config out/config-kg5n
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kernel
+          path: out/*
+
+  uboot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu bison flex libssl-dev device-tree-compiler
+
+      - name: Clone u-boot (ums9230-mainline/u-boot)
+        run: git clone --depth 1 -b ums9230 https://codeberg.org/ums9230-mainline/u-boot.git uboot
+
+      - name: Apply KG5n board support
+        run: |
+          cp uboot-src/ums9230-kg5n.dts uboot/arch/arm/dts/ums9230-kg5n.dts
+          cp uboot-src/kg5n_defconfig uboot/configs/kg5n_defconfig
+
+      - name: Build reeder-s19mps (reference, unmodified upstream)
+        run: |
+          cd uboot
+          make reeder-s19mps_defconfig
+          make CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)"
+
+      - name: Stage reeder artifacts
+        run: |
+          mkdir -p out
+          cp uboot/u-boot.bin out/u-boot-reeder.bin 2>/dev/null || cp uboot/u-boot-dtb.bin out/u-boot-reeder.bin
+
+      - name: Build kg5n
+        run: |
+          cd uboot
+          make distclean
+          make kg5n_defconfig
+          make CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)"
+
+      - name: Stage kg5n artifacts
+        run: |
+          cp uboot/u-boot.bin out/u-boot-kg5n.bin 2>/dev/null || cp uboot/u-boot-dtb.bin out/u-boot-kg5n.bin
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uboot
+          path: out/*

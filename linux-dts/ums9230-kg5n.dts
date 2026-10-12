@@ -1,0 +1,373 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * TECNO Spark 8C (KG5n) - Unisoc UMS9230 (Tiger T606)
+ *
+ * Draft device tree for the ums9230-mainline port, derived from
+ * ums9230-reeder-s19mps.dts (same UMS9230 reference board family).
+ *
+ * Focus: boot as a headless home server (eMMC rootfs, UART console,
+ * USB, Wi-Fi/BT). Display (panel TD4160) and touch (Novatek SPI) are
+ * intentionally left out - neither has a mainline driver yet.
+ *
+ * Board deltas vs reeder-s19mps (from downstream KG5n boot.img DT):
+ *   - storage: eMMC via sdio3 (reeder used UFS)
+ *   - panel:   TD4160 720x1612 (reeder: icnl9916 720x1600)   [not enabled]
+ *   - touch:   Novatek NT36xxx over SPI (reeder: Chipone I2C) [not enabled]
+ *   - charger: PMIC fast-charger (reeder: external TI bq25601) [not enabled]
+ *
+ * Items marked TODO could not be read from the downstream DT and are
+ * assumed identical to reeder (same reference board); verify on hardware.
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/usb/pd.h>
+#include "ums9230.dtsi"
+#include "sc2730.dtsi"
+
+/ {
+	model = "TECNO Spark 8C (KG5n)";
+	compatible = "tecno,kg5n", "sprd,ums9230";
+
+	aliases {
+		serial0 = &uart0;
+		serial1 = &uart1;
+		mmc0 = &sdio0;
+		mmc1 = &sdio3;
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
+		i2c5 = &i2c5;
+		i2c6 = &i2c6;
+		i2c7 = &aon_i2c0;
+	};
+
+	chosen {
+		stdout-path = "serial1:115200n8";
+
+		framebuffer {
+			compatible = "simple-framebuffer";
+			memory-region = <&framebuffer_region>;
+			width = <720>;
+			height = <1612>;
+			stride = <(720 * 4)>;
+			format = "a8r8g8b8";
+
+			status = "disabled";
+		};
+	};
+
+	reserved-memory {
+		framebuffer_region: framebuffer-region@9e000000 {
+			compatible = "framebuffer";
+			reg = <0 0x9e000000 0 (720 * 1612 * 4)>;
+			iommu-addresses = <&dpu 0x9e000000 (720 * 1612 * 4)>;
+			no-map;
+		};
+
+		ramoops@fff80000 {
+			compatible = "ramoops";
+			reg = <0x0 0xfff80000 0x0 0x40000>;
+			console-size = <0x8000>;
+			record-size = <0x8000>;
+			pmsg-size = <0x8000>;
+		};
+
+		linux,cma {
+			compatible = "shared-dma-pool";
+			size = <0x0 0x8000000>;
+			reusable;
+			linux,cma-default;
+		};
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 2 40000>;
+
+		brightness-levels = <0 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
+					     20 21 23 25 27 29 31 33 35 37 39 41 43 45 47
+					     49 51 53 55 57 59 61 63 65 67 69 71 73 75
+					     77 79 81 83 85 87 89 91 93 95 97 99 101 103
+					     105 107 109 111 113 115 117 119 121 123 125
+					     127 129 131 133 135 137 139 141 143 146 149
+					     152 155 158 161 164 167 170 173 176 179 182
+					     185 188 191 194 197 200 203 206 209 212 215
+					     218 221 224 227 230 233 237 241 245 248 252
+					     256 260 264 268 272 276 280 284 288 292 296
+					     300 304 308 312 316 320 324 328 332 336 342
+					     346 350 355 360 365 370 375 380 385 390 395
+					     400 406 412 418 424 430 436 442 448 454 460
+					     466 472 478 484 490 496 502 508 514 519 524
+					     530 536 542 548 554 560 566 572 578 584 590
+					     596 602 608 614 620 626 632 638 644 650 656
+					     662 670 676 682 688 694 700 706 712 718 724
+					     730 736 742 748 754 760 766 772 778 784 790
+					     796 802 808 814 820 826 832 838 844 850 856
+					     862 868 874 880 886 892 898 904 910 916 922
+					     928 934 940 945 950 955 960 965 970 975 980
+					     985 990 995 1000 1006 1012 1018 1023>;
+		default-brightness-level = <100>;
+	};
+
+	bat: battery {
+		compatible = "simple-battery";
+		/* TODO: verify capacity for KG5n (TECNO 5000 mAh typical) */
+		charge-full-design-microamp-hours = <5000000>;
+		charge-term-current-microamp = <130000>;
+		constant-charge-voltage-max-microvolt = <4400000>;
+		constant-charge-current-max-microamp = <2000000>;
+		voltage-min-design-microvolt = <3500000>;
+		voltage-max-design-microvolt = <4370000>;
+		factory-internal-resistance-micro-ohms = <268000>;
+		resistance-temp-table = <45 53>, <25 100>, <10 395>,
+					<0 567>, <(-10) 793>;
+		ocv-capacity-celsius = <20>;
+		ocv-capacity-table-0 = <4362000 100>, <4316000 95>,
+				       <4256000 90>, <4197000 85>,
+				       <4142000 80>, <4089000 75>,
+				       <4040000 70>, <3981000 65>,
+				       <3941000 60>, <3890000 55>,
+				       <3853000 50>, <3826000 45>,
+				       <3805000 40>, <3788000 35>,
+				       <3776000 30>, <3767000 25>,
+				       <3751000 20>, <3725000 15>,
+				       <3693000 10>, <3675000 5>,
+				       <3400000 0>;
+	};
+
+	/* TODO: verify GPIOs for KG5n */
+	flash-controller {
+		compatible = "sgmicro,sgm3140";
+		flash-gpios = <&ap_gpio 139 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&ap_gpio 32 GPIO_ACTIVE_HIGH>;
+
+		led {
+			function = LED_FUNCTION_FLASH;
+			color = <LED_COLOR_ID_WHITE>;
+			flash-max-timeout-us = <250000>;
+		};
+	};
+
+	/* TODO: verify for KG5n */
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		key-power {
+			wakeup-source;
+			debounce-interval = <2>;
+			gpios = <&pmic_eic 1 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_POWER>;
+		};
+
+		key-volumeup {
+			wakeup-source;
+			debounce-interval = <2>;
+			gpios = <&ap_gpio 124 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+		};
+
+		key-volumedown {
+			wakeup-source;
+			debounce-interval = <2>;
+			gpios = <&pmic_eic 4 GPIO_ACTIVE_HIGH>;
+			linux,code = <KEY_VOLUMEDOWN>;
+		};
+	};
+
+	/* TODO: verify GPIO for KG5n */
+	speaker_amp: speaker-amp {
+		compatible = "simple-audio-amplifier";
+		sound-name-prefix = "Speaker Amp";
+		enable-gpios = <&ap_gpio 136 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+/*
+ * Charger: KG5n charges through the SC2730 PMIC fast-charger.
+ * Mainline sc2730.dtsi has no fchg node yet and reeder used an external
+ * bq25601, so charging is not wired up here. Bootloader/PMIC defaults
+ * keep the pack charging while the OS runs. TODO: add PMIC fchg support.
+ */
+
+&cpufreq {
+	sprd,soc-version = /bits/ 64 <0x36303654>; /* T606 */
+	status = "okay";
+};
+
+&sdio0 {
+	vmmc-supply = <&vddsdcore>;
+	vqmmc-supply = <&vddsdio>;
+	cd-gpios = <&eic_async 35 GPIO_ACTIVE_HIGH>;
+
+	bus-width = <4>;
+	no-sdio;
+	no-mmc;
+	sprd,phy-delay-sd-uhs-sdr104 = <0x7f 0x73 0x72 0x72>;
+	sprd,phy-delay-sd-uhs-sdr50 = <0x6e 0x7f 0x01 0x01>;
+	sprd,phy-delay-sd-highspeed = <0x7f 0x1a 0x9a 0x9a>;
+	sprd,phy-delay-legacy = <0x7f 0x1a 0x9a 0x9a>;
+	sd-uhs-sdr104;
+	sd-uhs-sdr50;
+
+	status = "okay";
+};
+
+/* eMMC (device rootfs) */
+&sdio3 {
+	vmmc-supply = <&vddemmccore>;
+
+	bus-width = <8>;
+	non-removable;
+	cap-mmc-hw-reset;
+	mmc-hs400-1_8v;
+	mmc-hs200-1_8v;
+	mmc-ddr-1_8v;
+	/* TODO: sprd,phy-delay-mmc-* tuning - verify against downstream
+	 * (hs400es <0x40 0x80 0x3d 0x3d>, hs400 <0x3f 0xb5 0x3d 0x3d>,
+	 *  hs200 <0x7f 0xb5 0xb5 0xb5>). Safe default timing works without.
+	 */
+
+	status = "okay";
+};
+
+&sc2730_fgu {
+	monitored-battery = <&bat>;
+	sprd,calib-resistance-micro-ohms = <4850>;
+
+	status = "okay";
+};
+
+&sc2730_codec {
+	status = "okay";
+};
+
+&pmic_typec_pd {
+	status = "okay";
+
+	connector {
+		compatible = "usb-c-connector";
+		label = "USB-C";
+		data-role = "dual";
+		power-role = "dual";
+		try-power-role = "sink";
+		source-pdos = <PDO_FIXED(5000, 1200, PDO_FIXED_USB_COMM)>;
+		sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+		op-sink-microwatt = <10000000>;
+
+		port {
+			tcpc_hs_ep: endpoint {
+				remote-endpoint = <&usb_hs_ep>;
+			};
+		};
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&gpu {
+	mali-supply = <&vddgpu>;
+	status = "okay";
+};
+
+&hsphy {
+	phy-supply = <&vddusb33>;
+	status = "okay";
+};
+
+&usb {
+	dr_mode = "otg";
+	usb-role-switch;
+	role-switch-default-mode = "peripheral";
+	status = "okay";
+
+	port {
+		usb_hs_ep: endpoint {
+			remote-endpoint = <&tcpc_hs_ep>;
+		};
+	};
+};
+
+&modem {
+	status = "okay";
+};
+
+&modem_dai {
+	status = "okay";
+};
+
+/* Wi-Fi + Bluetooth (WCN). Values assumed equal to reeder. */
+&wcn {
+	enable-gpios = <&ap_gpio 118 GPIO_ACTIVE_HIGH>;
+	reset-gpios = <&ap_gpio 117 GPIO_ACTIVE_LOW>;
+	vdd-supply = <&vddwcn>;
+	vddwifipa-supply = <&vddwifipa>;
+	dcxo1v8-supply = <&vddsim2>;
+	status = "okay";
+};
+
+&sound {
+	model = "tecno-kg5n";
+	widgets =
+		"Headphone", "Headphones",
+		"Speaker", "Speaker",
+		"Line", "Modem Uplink",
+		"Line", "Modem Downlink";
+	pin-switches = "Speaker";
+	audio-routing =
+		"Headphones", "HPL_OUT",
+		"Headphones", "HPR_OUT",
+		"Speaker Amp INL", "HPL_OUT",
+		"Speaker Amp INR", "HPL_OUT",
+		"Speaker", "Speaker Amp OUTL",
+		"Speaker", "Speaker Amp OUTR",
+		"Modem Uplink", "Modem DAI AOUT",
+		"Modem DAI AIN", "Modem Downlink";
+	aux-devs = <&modem_dai>, <&speaker_amp>;
+
+	status = "okay";
+
+	iis0-dai-link {
+		link-name = "IIS0";
+		dai-format = "i2s";
+		frame-inversion;
+		sprd,fixed-fmt = <24>;
+
+		codec {
+			sound-dai = <&dig_codec 0>, <&sc2730_codec 0>;
+		};
+	};
+
+	iis1-dai-link {
+		link-name = "IIS1";
+		dai-format = "i2s";
+		frame-inversion;
+		sprd,fixed-fmt = <24>;
+
+		codec {
+			sound-dai = <&dig_codec 1>, <&sc2730_codec 1>;
+		};
+	};
+
+	voice-dai-link {
+		link-name = "VOICE";
+
+		codec {
+			sound-dai = <&modem_dai>;
+		};
+	};
+};
+
+&vddkpled {
+	regulator-always-on;
+};
