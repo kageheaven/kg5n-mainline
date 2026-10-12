@@ -26,6 +26,13 @@ jobs:
           cp linux-dts/ums9230-kg5n.dts linux/arch/arm64/boot/dts/sprd/ums9230-kg5n.dts
           echo 'dtb-$(CONFIG_ARCH_SPRD) += ums9230-kg5n.dtb' >> linux/arch/arm64/boot/dts/sprd/Makefile
 
+      - name: Patch Unisoc DRM Kconfig
+        run: |
+          K=linux/drivers/gpu/drm/sprd/Kconfig
+          grep -q 'select DRM_CLIENT_SELECTION' "$K" || \
+            perl -0777 -pi -e 's/(\n\tselect VIDEOMODE_HELPERS\n)/$1\tselect DRM_CLIENT_SELECTION\n/' "$K"
+          sed -n '1,20p' "$K"
+
       - name: Configure
         run: |
           cd linux
@@ -38,7 +45,8 @@ jobs:
           for s in ARCH_SPRD SERIAL_SPRD MMC_SDHCI_SPRD MFD_SC27XX_PMIC \
                    REGULATOR_SC2730 SC27XX_ADC FUEL_GAUGE_SC27XX SPRD_WCN_REMOTEPROC \
                    CFG80211 MAC80211 SC23XX_SIPC BT_SPRDSIPC DRM_SPRD SND_SOC_SPRD \
-                   TYPEC_SC27XX_PD USB_MUSB_SPRD; do
+                   TYPEC_SC27XX_PD USB_MUSB_SPRD DRM_CLIENT_SELECTION DRM_CLIENT_LIB \
+                   DRM_FBDEV_EMULATION; do
             grep -q "^CONFIG_$s=y" .config || { echo "NOT BUILT-IN: CONFIG_$s"; grep "^CONFIG_$s=" .config; exit 1; }
           done
           echo "config OK"
