@@ -286,9 +286,12 @@
 };
 
 &usb {
-	dr_mode = "otg";
-	usb-role-switch;
-	role-switch-default-mode = "peripheral";
+	/*
+	 * No mainline Type-C role switch yet (sc27xx PD / extcon is not wired
+	 * up), so pin the controller in peripheral mode: this is what the USB
+	 * CDC-ACM console needs.  Switch to "otg" once role detection works.
+	 */
+	dr_mode = "peripheral";
 	status = "okay";
 
 	port {

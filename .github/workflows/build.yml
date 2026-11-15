@@ -47,9 +47,12 @@ jobs:
                    CFG80211 MAC80211 SC23XX_SIPC BT_SPRDSIPC DRM_SPRD SND_SOC_SPRD \
                    TYPEC_SC27XX_PD USB_MUSB_SPRD DRM_CLIENT_SELECTION DRM_CLIENT_LIB \
                    DRM_FBDEV_EMULATION USB_GADGET USB_LIBCOMPOSITE USB_CONFIGFS \
-                   USB_F_ACM USB_U_SERIAL USB_CONFIGFS_ACM USB_ROLE_SWITCH; do
+                   USB_F_ACM USB_U_SERIAL USB_CONFIGFS_ACM USB_ROLE_SWITCH \
+                   DRM_SIMPLEDRM DEVMEM; do
             grep -q "^CONFIG_$s=y" .config || { echo "NOT BUILT-IN: CONFIG_$s"; grep "^CONFIG_$s=" .config; exit 1; }
           done
+          grep -q "^CONFIG_STRICT_DEVMEM=y" .config && { echo "STRICT_DEVMEM still on"; exit 1; }
+          grep -q "^CONFIG_IO_STRICT_DEVMEM=y" .config && { echo "IO_STRICT_DEVMEM still on"; exit 1; }
           echo "config OK"
 
       - name: Build KG5n dtbs
