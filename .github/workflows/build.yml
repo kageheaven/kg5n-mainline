@@ -46,7 +46,8 @@ jobs:
                    REGULATOR_SC2730 SC27XX_ADC FUEL_GAUGE_SC27XX SPRD_WCN_REMOTEPROC \
                    CFG80211 MAC80211 SC23XX_SIPC BT_SPRDSIPC DRM_SPRD SND_SOC_SPRD \
                    TYPEC_SC27XX_PD USB_MUSB_SPRD DRM_CLIENT_SELECTION DRM_CLIENT_LIB \
-                   DRM_FBDEV_EMULATION; do
+                   DRM_FBDEV_EMULATION USB_GADGET USB_LIBCOMPOSITE USB_CONFIGFS \
+                   USB_F_ACM USB_U_SERIAL USB_CONFIGFS_ACM USB_ROLE_SWITCH; do
             grep -q "^CONFIG_$s=y" .config || { echo "NOT BUILT-IN: CONFIG_$s"; grep "^CONFIG_$s=" .config; exit 1; }
           done
           echo "config OK"
